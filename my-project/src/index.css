@@ -1,0 +1,98 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  /* Light mode colors */
+  --bg: #FAF8F5;
+  --navbar-bg: #FFFFFF;
+  --text-primary: #1C1A17;
+  --text-secondary: #5E5B56;
+  --text-muted: #8C8880;
+  --accent: #10B981;
+  --border: #E5E2DD;
+  --btn-border: #C4C1BC;
+  --btn-signup-bg: #1C1A17;
+  --btn-signup-text: #FFFFFF;
+  --footer-bg: #F0ECE6;
+  --social-icon-bg: #353330;
+  --social-icon-hover-bg: #1C1A17;
+  --tab-active-bg: #E3DFD8;
+  
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  
+  color-scheme: light dark;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  background-color: var(--bg);
+  
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Dark mode colors */
+    --bg: #12110F;
+    --navbar-bg: #1C1A19;
+    --text-primary: #F4F2EE;
+    --text-secondary: #BCB8B2;
+    --text-muted: #7A7670;
+    --border: #2E2C29;
+    --btn-border: #4D4A45;
+    --btn-signup-bg: #F4F2EE;
+    --btn-signup-text: #12110F;
+    --footer-bg: #181715;
+    --social-icon-bg: #4D4A45;
+    --social-icon-hover-bg: #F4F2EE;
+    --tab-active-bg: #2B2A27;
+  }
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg);
+  color: var(--text-secondary);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 24px 48px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  flex-grow: 1;
+}
+
+/* Base Headings & Text */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-primary);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+p {
+  color: var(--text-secondary);
+}
+
+button {
+  font-family: var(--font-sans);
+}
