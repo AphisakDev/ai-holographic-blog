@@ -3,12 +3,11 @@ import NavBar from './component/NavBar';
 import HeroSection from './component/HeroSection';
 import ArticleSection from './component/ArticleSection';
 import Footer from './component/Footer';
-import './App.css';
 
 function App() {
   return (
     <>
-      <main className="main-content" id="main-content">
+      <main className="w-full max-w-[1200px] mx-auto px-6 pt-10 pb-12 flex flex-col gap-12 flex-grow" id="main-content">
         <NavBar />
         <HeroSection />
         <ArticleSection />
@@ -19,3 +18,4 @@ function App() {
 }
 
 export default App;
+

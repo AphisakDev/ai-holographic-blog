@@ -1,4 +1,21 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-custom-bg: var(--bg);
+  --color-custom-navbar-bg: var(--navbar-bg);
+  --color-custom-text-primary: var(--text-primary);
+  --color-custom-text-secondary: var(--text-secondary);
+  --color-custom-text-muted: var(--text-muted);
+  --color-custom-accent: var(--accent);
+  --color-custom-border: var(--border);
+  --color-custom-btn-border: var(--btn-border);
+  --color-custom-btn-signup-bg: var(--btn-signup-bg);
+  --color-custom-btn-signup-text: var(--btn-signup-text);
+  --color-custom-footer-bg: var(--footer-bg);
+  --color-custom-social-icon-bg: var(--social-icon-bg);
+  --color-custom-social-icon-hover-bg: var(--social-icon-hover-bg);
+  --color-custom-tab-active-bg: var(--tab-active-bg);
+}
 
 :root {
   /* Light mode colors */
@@ -49,50 +66,31 @@
   }
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
 
-body {
-  margin: 0;
-  background-color: var(--bg);
-  color: var(--text-secondary);
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-}
+  body {
+    @apply bg-custom-bg text-custom-text-secondary min-h-screen flex justify-center m-0;
+  }
 
-#root {
-  width: 100%;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
+  #root {
+    @apply w-full min-h-screen flex flex-col;
+  }
 
-.main-content {
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 40px 24px 48px 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 48px;
-  flex-grow: 1;
-}
+  /* Base Headings & Text */
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-custom-text-primary font-bold leading-[1.2];
+  }
 
-/* Base Headings & Text */
-h1, h2, h3, h4, h5, h6 {
-  color: var(--text-primary);
-  font-weight: 700;
-  line-height: 1.2;
-}
+  p {
+    @apply text-custom-text-secondary;
+  }
 
-p {
-  color: var(--text-secondary);
-}
-
-button {
-  font-family: var(--font-sans);
+  button {
+    font-family: var(--font-sans);
+  }
 }
