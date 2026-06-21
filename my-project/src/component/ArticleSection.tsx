@@ -1,27 +1,75 @@
 import { useState } from 'react';
+import BlogCard from './BlogCard';
+import { blogPosts } from '../data/blogPosts';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select';
 
 export default function ArticleSection() {
-  const tabs = ['Highlight', 'Cat', 'Inspiration', 'Ganeral'];
-  const [activeTab, setActiveTab] = useState('Highlight');
+  // 1. สร้าง array ของ category ตามที่กำหนด
+  const categories = ["Highlight", "Anime", "Technology"];
+  
+  // 2. สร้าง state สำหรับเก็บ category ปัจจุบัน
+  const [selectedCategory, setSelectedCategory] = useState('Highlight');
   const [searchVal, setSearchVal] = useState('');
+
+  // กรองบทความตาม category ที่เลือก และคำค้นหา (search input)
+  const filteredPosts = blogPosts.filter((post: any) => {
+    const matchesCategory = selectedCategory === 'Highlight' || post.category === selectedCategory;
+    const matchesSearch =
+      post.title.toLowerCase().includes(searchVal.toLowerCase()) ||
+      post.description.toLowerCase().includes(searchVal.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
 
   return (
     <section className="flex flex-col gap-5 w-full" id="article-section">
-      <h2 className="text-2xl font-extrabold tracking-[-0.5px] text-custom-text-primary text-left" id="article-section-title">Latest articles</h2>
+      <h2 className="text-2xl font-extrabold tracking-[-0.5px] text-custom-text-primary text-left" id="article-section-title">
+        Latest articles
+      </h2>
       
       <div className="bg-custom-footer-bg rounded-2xl py-4 px-6 flex justify-between items-center gap-5 transition-all duration-300 border border-custom-border max-[768px]:flex-col max-[768px]:items-stretch max-[768px]:gap-4 max-[768px]:p-4" id="filter-bar">
-        {/* Left Side: Category Tabs */}
+        {/* Left Side: Category Tabs (Desktop & Mobile Sync) */}
         <div className="flex gap-4 items-center flex-wrap max-[768px]:justify-center max-[768px]:gap-2" id="category-tabs">
-          {tabs.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`text-sm font-semibold text-custom-text-secondary bg-transparent border-none py-2.5 px-5 rounded-[10px] cursor-pointer transition-colors duration-200 outline-none hover:text-custom-text-primary max-[768px]:py-2 max-[768px]:px-4 max-[768px]:text-[13px] ${activeTab === tab ? 'bg-custom-tab-active-bg text-custom-text-primary' : ''}`}
-              id={`tab-${tab.toLowerCase()}`}
-            >
-              {tab}
-            </button>
-          ))}
+          {/* Todo 1 - Desktop: categories.map() แทนการเขียน button ซ้ำ */}
+          <div className="hidden md:flex space-x-2">
+            {categories.map((cat) => {
+              const isSelected = selectedCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-4 py-3 transition-colors rounded-sm text-sm font-medium cursor-pointer ${
+                    isSelected
+                      ? "bg-custom-tab-active-bg text-custom-text-primary"
+                      : "bg-transparent text-custom-text-muted hover:text-custom-text-primary hover:bg-custom-tab-active-bg/50"
+                  }`}
+                >
+                  {cat}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Todo 2 - Mobile: categories.map() แทนการเขียน SelectItem ซ้ำ */}
+          <div className="md:hidden w-full">
+            <Select value={selectedCategory} onValueChange={(val) => val && setSelectedCategory(val)}>
+              <SelectTrigger className="w-full py-3 rounded-sm text-muted-foreground bg-custom-navbar-bg border-custom-border">
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent className="bg-custom-navbar-bg border-custom-border text-custom-text-primary">
+                {categories.map((cat) => (
+                  <SelectItem key={cat} value={cat} className="focus:bg-custom-tab-active-bg focus:text-custom-text-primary">
+                    {cat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Right Side: Search Input */}
@@ -44,6 +92,14 @@ export default function ArticleSection() {
             </svg>
           </span>
         </div>
+      </div>
+
+      {/* Grid container for Blog Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-10" id="blog-cards-grid">
+        {/* Render filteredPosts by mapping and spreading props */}
+        {filteredPosts.map((post: any) => (
+          <BlogCard key={post.id} {...post} />
+        ))}
       </div>
     </section>
   );
