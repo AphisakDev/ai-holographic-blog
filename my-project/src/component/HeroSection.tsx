@@ -6,22 +6,22 @@ export default function HeroSection() {
     <section className="grid grid-cols-[1fr_1.25fr_1fr] gap-12 items-center mt-3 py-6 flex-grow max-[992px]:grid-cols-1 max-[992px]:gap-10 max-[992px]:py-4" id="hero-section">
       {/* Left Column: Heading and Subheading */}
      <div className="flex flex-col items-end text-right max-[992px]:items-center max-[992px]:text-center " id="hero-left">
-        <h1 className="text-[56px] font-extrabold leading-[1.05] tracking-[-2px] text-custom-text-primary mb-5 max-[992px]:text-[44px] max-[576px]:text-[34px]" id="hero-title">
+        <h1 className="text-[56px] font-extrabold leading-[1.05] tracking-[-2px] text-custom-text-primary mb-5 max-[992px]:text-[44px] max-[576px]:text-[34px] drop-shadow-[0_0_20px_rgba(79,216,224,0.65)]" id="hero-title">
           AI<br />
-          โฮโลแกรม<br /> 
+          Hologram<br /> 
         </h1>
         <p className="text-[15px] text-custom-text-secondary leading-[1.55] max-w-[300px] font-normal max-[992px]:max-w-[70%] max-[550px]:max-w-[80%] max-[576px]:text-[13.5px]" id="hero-subtitle">
-          ชมปัญญาประดิษฐ์แปลงร่างเป็นรูปธรรม เพื่อนคู่ใจโฮโลแกรม 3 มิติเปล่งแสงลอยขึ้นกลางอากาศ ตอบสนองได้แบบเรียลไทม์ พาอนาคตของการปฏิสัมพันธ์ระหว่างมนุษย์กับ AI มาอยู่ในพื้นที่ของคุณ โดยไม่ต้องพึ่งหน้าจอ
+          Experience artificial intelligence in a tangible, three-dimensional format. 3D holograms illuminating mid-air and responding in real-time, bringing the future of human-AI interaction into your space without the limits of traditional screens.
         </p>
       </div>
 
       {/* Center Column: Portrait Image */}
       <div className="flex justify-center items-center" id="hero-center">
-        <div className="w-full max-w-[360px] aspect-[3/4] overflow-hidden rounded-[24px] border border-custom-border shadow-[0_20px_48px_rgba(28,26,23,0.06)] transition-transform duration-300 hover:-translate-y-1 max-[992px]:max-w-[300px]" id="hero-image-wrapper">
+        <div className="w-full max-w-[360px] aspect-[3/4] overflow-hidden rounded-[24px] glass-panel animate-border-flash transition-transform duration-300 hover:scale-[1.02] max-[992px]:max-w-[300px]" id="hero-image-wrapper">
           <img
             src={heroCatImg}
             alt="Thompson P. with cat"
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover opacity-85 hover:opacity-100 transition-opacity duration-300"
             id="hero-image"
           />
         </div>
@@ -33,10 +33,10 @@ export default function HeroSection() {
         <h2 className="text-[26px] font-extrabold tracking-[-0.5px] text-custom-text-primary mb-4" id="author-name">Apisak Ngaotham</h2>
         <div className="flex flex-col gap-4 max-w-[300px] max-[992px]:max-w-[70%] max-[550px]:max-w-[80%]" id="author-bio">
           <p className="text-sm text-custom-text-secondary leading-[1.6] max-[576px]:text-[13.5px]" id="bio-paragraph-1">
-            ผมเป็น full-stack developer ที่ชอบเปลี่ยนไอเดียให้กลายเป็น product ที่ใช้งานได้จริง สร้างทุกอย่างตั้งแต่ backend system ไปจนถึง frontend ที่ขัดเกลาจนสมบูรณ์แบบ และผมสนใจใคร่รู้เรื่อง AI กับทิศทางที่มันกำลังมุ่งหน้าไปอยู่เสมอ
+            I am a Full-Stack Developer who loves transforming creative ideas into fully functional products. With expertise spanning from robust backend systems to meticulously crafted frontends, I am always exploring the frontiers of AI technology and its future directions.
           </p>
           <p className="text-sm text-custom-text-secondary leading-[1.6] max-[576px]:text-[13.5px]" id="bio-paragraph-2">
-            ความฝันที่ยิ่งใหญ่ที่สุดของผมคือการสร้าง AI hologram ที่ใช้งานได้จริง พา intelligence มามีชีวิตใน three-dimensional space เวลาที่ไม่ได้ coding ผมมักจะ sketch ไอเดียและ experiment หาวิธีทำให้ vision นั้นกลายเป็นจริง
+            My ultimate goal is to develop functional AI holograms, bringing intelligence to life in three-dimensional space. When I am not coding, I sketch new ideas and run experiments, constantly seeking ways to turn this futuristic vision into reality.
           </p>
         </div>
       </div>

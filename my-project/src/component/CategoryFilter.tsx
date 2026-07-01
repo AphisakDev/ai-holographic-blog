@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   Select,
   SelectContent,
@@ -7,12 +6,14 @@ import {
   SelectValue,
 } from '../components/ui/select';
 
-const CategoryFilter = () => {
-  // 1. สร้าง useState ชื่อ category ค่าเริ่มต้นเป็น "Highlight"
-  const [category, setCategory] = useState<string>('Highlight');
+interface CategoryFilterProps {
+  category: string;
+  onCategoryChange: (category: string) => void;
+}
 
+const CategoryFilter = ({ category, onCategoryChange }: CategoryFilterProps) => {
   // รายการ Category
-  const categories = ['Highlight', 'Tech', 'Lifestyle'];
+  const categories = ['Highlight', 'Anime', 'Technology'];
 
   return (
     <div className="flex flex-col gap-4 p-4 border border-custom-border rounded-xl bg-custom-navbar-bg shadow-sm" id="category-filter">
@@ -24,7 +25,7 @@ const CategoryFilter = () => {
             <button
               key={categoryName}
               disabled={isSelected}
-              onClick={() => setCategory(categoryName)}
+              onClick={() => onCategoryChange(categoryName)}
               className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors duration-200 cursor-pointer disabled:cursor-not-allowed ${
                 isSelected
                   ? 'bg-blue-500 text-white'
@@ -39,14 +40,16 @@ const CategoryFilter = () => {
 
       {/* 3. Mobile — แสดง <Select> จาก shadcn/ui */}
       <div className="block md:hidden w-full" id="category-filter-mobile">
-        <Select value={category} onValueChange={(value) => value && setCategory(value)}>
+        <Select value={category} onValueChange={(value) => value && onCategoryChange(value)}>
           <SelectTrigger className="w-full text-custom-text-primary border-custom-border bg-custom-bg">
             <SelectValue placeholder="Select category" />
           </SelectTrigger>
           <SelectContent className="bg-custom-navbar-bg border-custom-border text-custom-text-primary">
-            <SelectItem value="Highlight">Highlight</SelectItem>
-            <SelectItem value="Tech">Tech</SelectItem>
-            <SelectItem value="Lifestyle">Lifestyle</SelectItem>
+            {categories.map((cat) => (
+              <SelectItem key={cat} value={cat}>
+                {cat}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -60,3 +63,4 @@ const CategoryFilter = () => {
 };
 
 export default CategoryFilter;
+
