@@ -103,7 +103,7 @@ export default function ArticleSection() {
 
       const response = await getPosts({
         page: targetPage,
-        limit: 6,
+        limit: 4,
         category: categoryParam,
         keyword: keywordParam,
       });
