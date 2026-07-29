@@ -21,7 +21,7 @@ const PORT = process.env.PORT || 5000;
 
 // Standard Middlewares
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: process.env.FRONTEND_URL || true,
   credentials: true
 }));
 app.use(express.json());
@@ -33,6 +33,10 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
 
 // Health Check
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', message: 'Server is healthy' });
+});
+
 app.get('/', (req, res) => {
   res.json({ status: 'success', message: 'Holographic Blog MongoDB Backend Server is Running!' });
 });
