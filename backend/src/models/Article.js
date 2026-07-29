@@ -36,7 +36,10 @@ const articleSchema = new mongoose.Schema(
     likes: {
       type: Number,
       default: 15
-    }
+    },
+    likedBy: [{
+      type: String
+    }]
   },
   {
     timestamps: true

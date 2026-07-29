@@ -10,6 +10,8 @@ import {
   loginWithProviderMock
 } from '../lib/authService';
 
+import { getNotifications } from '../lib/api';
+
 export interface NotificationItem {
   id: string;
   title: string;
@@ -55,38 +57,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // โหลดข้อมูลการแจ้งเตือน (Notifications) อิงตามผู้ใช้งาน
   useEffect(() => {
     if (user) {
-      const storageKey = `mock_notifications_${user.id}`;
-      const savedNotis = localStorage.getItem(storageKey);
-      if (savedNotis) {
-        setNotifications(JSON.parse(savedNotis));
-      } else {
-        // สร้างการแจ้งเตือนเริ่มต้น (Default Mock Notifications)
-        const defaultNotis: NotificationItem[] = [
-          {
-            id: 'noti-1',
-            title: 'ยินดีต้อนรับสู่บล็อกใหม่ของคุณ!',
-            message: 'ขอบคุณที่สมัครสมาชิกกับเรา คุณสามารถติดตามบทความและข่าวสารอัปเดตใหม่ๆ ได้ที่นี่',
-            time: '2 นาทีที่แล้ว',
-            isRead: false,
-          },
-          {
-            id: 'noti-2',
-            title: 'บทความเด่นวันนี้ 🚀',
-            message: 'ห้ามพลาด! บทความการพัฒนาเว็บด้วย React 19 และ TailwindCSS v4 พร้อมเทคนิคจัดแต่งหน้าเว็บเพจ',
-            time: '1 ชั่วโมงที่แล้ว',
-            isRead: false,
-          },
-          {
-            id: 'noti-3',
-            title: 'แนะนำ: อัปเดตข้อมูลโปรไฟล์',
-            message: 'แต่งเติมความเป็นตัวคุณได้ทันทีโดยการอัปโหลดรูปภาพโปรไฟล์ใหม่ได้ที่เมนู Profile',
-            time: '3 ชั่วโมงที่แล้ว',
-            isRead: false,
+      const fetchApiNotis = async () => {
+        try {
+          const apiNotis = await getNotifications();
+          if (apiNotis && apiNotis.length > 0) {
+            const formattedNotis: NotificationItem[] = apiNotis.map(n => ({
+              id: n.id,
+              title: n.type === 'like' ? 'การถูกใจใหม่ 💖' : n.type === 'comment' ? 'ความคิดเห็นใหม่ 💬' : 'การแจ้งเตือน 📢',
+              message: n.message,
+              time: new Date(n.createdAt).toLocaleDateString('th-TH', { hour: '2-digit', minute: '2-digit' }),
+              isRead: n.isRead
+            }));
+            setNotifications(formattedNotis);
+            return;
           }
-        ];
-        localStorage.setItem(storageKey, JSON.stringify(defaultNotis));
-        setNotifications(defaultNotis);
-      }
+        } catch (err) {
+          console.error('Error fetching API notifications:', err);
+        }
+
+        const storageKey = `mock_notifications_${user.id}`;
+        const savedNotis = localStorage.getItem(storageKey);
+        if (savedNotis) {
+          setNotifications(JSON.parse(savedNotis));
+        } else {
+          const defaultNotis: NotificationItem[] = [
+            {
+              id: 'noti-1',
+              title: 'ยินดีต้อนรับสู่บล็อกใหม่ของคุณ!',
+              message: 'ขอบคุณที่สมัครสมาชิกกับเรา คุณสามารถติดตามบทความและข่าวสารอัปเดตใหม่ๆ ได้ที่นี่',
+              time: '2 นาทีที่แล้ว',
+              isRead: false,
+            },
+            {
+              id: 'noti-2',
+              title: 'บทความเด่นวันนี้ 🚀',
+              message: 'ห้ามพลาด! บทความการพัฒนาเว็บด้วย React 19 และ TailwindCSS v4 พร้อมเทคนิคจัดแต่งหน้าเว็บเพจ',
+              time: '1 ชั่วโมงที่แล้ว',
+              isRead: false,
+            }
+          ];
+          localStorage.setItem(storageKey, JSON.stringify(defaultNotis));
+          setNotifications(defaultNotis);
+        }
+      };
+
+      fetchApiNotis();
     } else {
       setNotifications([]);
     }

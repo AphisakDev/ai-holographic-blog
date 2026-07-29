@@ -13,7 +13,7 @@ export interface AuthSession {
 }
 
 const STORAGE_KEY_CURRENT_USER = 'mock_current_user_session';
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://holographic-blog-backend.vercel.app/api';
 const API_BASE = `${BASE_URL}/auth`;
 
 const getAuthHeaders = (): HeadersInit => {
