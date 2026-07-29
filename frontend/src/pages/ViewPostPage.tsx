@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import {
   Heart,
@@ -8,14 +8,25 @@ import {
   User,
   X,
   Copy,
+  Trash2,
+  Send,
+  MessageSquare
 } from 'lucide-react';
-import { getPost, type Post } from '../lib/api';
+import { 
+  getPost, 
+  getComments, 
+  createComment, 
+  deleteComment, 
+  toggleLike, 
+  type Post, 
+  type CommentItem 
+} from '../lib/api';
 import { formatDate } from '../lib/utils';
 import heroCatImg from '../assets/aii.png';
 import { toast } from 'sonner';
+import { useAuth } from '../context/AuthContext';
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -25,12 +36,14 @@ import {
 
 export default function ViewPostPage() {
   const { postId } = useParams<{ postId: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const isLogin = Boolean(user);
+
   const [post, setPost] = useState<Post | null>(null);
+  const [comments, setComments] = useState<CommentItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-
-  // hardcoded auth status
-  const isLogin = false;
 
   // alert dialog state
   const [showLoginAlert, setShowLoginAlert] = useState<boolean>(false);
@@ -38,19 +51,28 @@ export default function ViewPostPage() {
 
   // comment state
   const [commentText, setCommentText] = useState<string>('');
+  const [isSendingComment, setIsSendingComment] = useState<boolean>(false);
+
+  // like state
+  const [isLiking, setIsLiking] = useState<boolean>(false);
 
   // copy link state
   const [copied, setCopied] = useState<boolean>(false);
 
   useEffect(() => {
-    async function fetchPost() {
+    async function fetchData() {
       if (!postId) return;
       setIsLoading(true);
       setError(null);
       try {
-        const data = await getPost(postId);
-        if (data) {
-          setPost(data);
+        const [postData, commentList] = await Promise.all([
+          getPost(postId),
+          getComments(postId).catch(() => [])
+        ]);
+
+        if (postData) {
+          setPost(postData);
+          setComments(commentList);
         } else {
           setError('Article not found');
         }
@@ -62,13 +84,31 @@ export default function ViewPostPage() {
       }
     }
 
-    fetchPost();
+    fetchData();
   }, [postId]);
 
-  const handleLikeClick = () => {
+  const handleLikeClick = async () => {
     if (!isLogin) {
       setAlertMessage('กรุณาเข้าสู่ระบบก่อนกดไลก์บทความนี้');
       setShowLoginAlert(true);
+      return;
+    }
+
+    if (!postId || !post || isLiking) return;
+
+    setIsLiking(true);
+    try {
+      const res = await toggleLike(postId);
+      setPost({
+        ...post,
+        likes: res.likes,
+        likedBy: res.likedBy
+      });
+      toast.success(res.isLiked ? 'กดถูกใจบทความนี้แล้ว 💖' : 'ยกเลิกการถูกใจแล้ว');
+    } catch (err: any) {
+      toast.error(err.message || 'เกิดข้อผิดพลาดในการกดถูกใจ');
+    } finally {
+      setIsLiking(false);
     }
   };
 
@@ -83,13 +123,37 @@ export default function ViewPostPage() {
     }
   };
 
-  const handleSendComment = () => {
+  const handleSendComment = async () => {
     if (!isLogin) {
       setAlertMessage('กรุณาเข้าสู่ระบบก่อนแสดงความคิดเห็น');
       setShowLoginAlert(true);
       return;
     }
-    // Logic for sending comment goes here
+
+    if (!commentText.trim() || !postId || isSendingComment) return;
+
+    setIsSendingComment(true);
+    try {
+      const newComment = await createComment(postId, commentText);
+      setComments([newComment, ...comments]);
+      setCommentText('');
+      toast.success('ส่งความคิดเห็นสำเร็จแล้ว!');
+    } catch (err: any) {
+      toast.error(err.message || 'เกิดข้อผิดพลาดในการส่งความคิดเห็น');
+    } finally {
+      setIsSendingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!postId) return;
+    try {
+      await deleteComment(postId, commentId);
+      setComments(comments.filter(c => c.id !== commentId));
+      toast.success('ลบความคิดเห็นเรียบร้อยแล้ว');
+    } catch (err: any) {
+      toast.error(err.message || 'ไม่สามารถลบความคิดเห็นได้');
+    }
   };
 
   const handleCopyLink = async () => {
@@ -128,6 +192,8 @@ export default function ViewPostPage() {
     
     window.open(shareUrl, '_blank', 'width=600,height=400,noopener,noreferrer');
   };
+
+  const isLikedByCurrentUser = Boolean(user && post?.likedBy?.includes(user.id));
 
   if (isLoading) {
     return (
@@ -200,11 +266,16 @@ export default function ViewPostPage() {
 
         <button 
           onClick={handleLikeClick}
-          className="flex items-center gap-2 bg-custom-footer-bg hover:bg-[rgba(28,26,23,0.03)] dark:hover:bg-[rgba(244,242,238,0.05)] border border-custom-border rounded-full py-1.5 px-4 text-sm cursor-pointer transition-all active:scale-95" 
+          disabled={isLiking}
+          className={`flex items-center gap-2 border rounded-full py-1.5 px-4 text-sm cursor-pointer transition-all active:scale-95 ${
+            isLikedByCurrentUser 
+              ? 'bg-red-500/10 border-red-500/30 text-red-500' 
+              : 'bg-custom-footer-bg hover:bg-[rgba(28,26,23,0.03)] border-custom-border text-custom-text-primary'
+          }`}
           id="post-likes-top"
         >
-          <Heart size={16} className="text-red-500 fill-red-500" />
-          <span className="font-semibold text-custom-text-primary">{post.likes} likes</span>
+          <Heart size={16} className={isLikedByCurrentUser ? 'text-red-500 fill-red-500' : 'text-red-500'} />
+          <span className="font-semibold">{post.likes} likes</span>
         </button>
       </div>
 
@@ -229,11 +300,16 @@ export default function ViewPostPage() {
         {/* Left Side: Like Button */}
         <button
           onClick={handleLikeClick}
-          className="flex items-center gap-2 bg-custom-navbar-bg hover:bg-custom-navbar-bg/85 border border-custom-border rounded-full py-2 px-5 text-sm font-semibold text-custom-text-primary cursor-pointer transition-all shadow-sm active:scale-95"
+          disabled={isLiking}
+          className={`flex items-center gap-2 border rounded-full py-2 px-5 text-sm font-semibold cursor-pointer transition-all shadow-sm active:scale-95 ${
+            isLikedByCurrentUser
+              ? 'bg-red-500 border-red-500 text-white shadow-red-500/20'
+              : 'bg-custom-navbar-bg hover:bg-custom-navbar-bg/85 border-custom-border text-custom-text-primary'
+          }`}
           id="btn-like-post"
         >
-          <Heart size={16} className="text-red-500 fill-red-500" />
-          <span>{post.likes}</span>
+          <Heart size={16} className={isLikedByCurrentUser ? 'fill-white text-white' : 'text-red-500'} />
+          <span>{post.likes} {post.likes === 1 ? 'Like' : 'Likes'}</span>
         </button>
 
         {/* Right Side: Copy Link and Social Shares */}
@@ -278,11 +354,15 @@ export default function ViewPostPage() {
       </div>
 
       {/* Comment Section */}
-      <div className="flex flex-col gap-4 mt-6 text-left" id="comment-section">
-        <h3 className="text-xl font-bold text-custom-text-primary">Comment</h3>
+      <div className="flex flex-col gap-6 mt-6 text-left" id="comment-section">
+        <h3 className="text-xl font-bold text-custom-text-primary flex items-center gap-2">
+          <MessageSquare size={20} />
+          Comments ({comments.length})
+        </h3>
+        
         <div className="flex flex-col items-end gap-3 w-full">
           <textarea
-            placeholder="What are your thoughts?"
+            placeholder={isLogin ? "แสดงความคิดเห็นของคุณที่นี่..." : "กรุณาเข้าสู่ระบบก่อนแสดงความคิดเห็น"}
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
             onFocus={handleCommentInteraction}
@@ -292,11 +372,60 @@ export default function ViewPostPage() {
           />
           <button
             onClick={handleSendComment}
-            className="text-sm font-semibold py-2.5 px-6 rounded-full cursor-pointer transition-all duration-250 bg-custom-btn-signup-bg border border-custom-btn-signup-bg text-custom-btn-signup-text shadow-sm hover:opacity-90 active:scale-95"
+            disabled={isSendingComment || !commentText.trim()}
+            className="inline-flex items-center gap-2 text-sm font-semibold py-2.5 px-6 rounded-full cursor-pointer transition-all duration-250 bg-custom-btn-signup-bg border border-custom-btn-signup-bg text-custom-btn-signup-text shadow-sm hover:opacity-90 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             id="btn-send-comment"
           >
-            Send
+            <Send size={14} />
+            <span>{isSendingComment ? 'กำลังส่ง...' : 'ส่งความคิดเห็น'}</span>
           </button>
+        </div>
+
+        {/* Comment List */}
+        <div className="flex flex-col gap-4 mt-4">
+          {comments.length === 0 ? (
+            <p className="text-sm text-custom-text-muted italic text-center py-6 border border-dashed border-custom-border rounded-xl">
+              ยังไม่มีความคิดเห็น เป็นคนแรกที่แสดงความคิดเห็นในบทความนี้!
+            </p>
+          ) : (
+            comments.map((comment) => (
+              <div 
+                key={comment.id}
+                className="flex items-start justify-between gap-4 p-4 rounded-xl border border-custom-border bg-custom-footer-bg/50 transition-all hover:border-custom-border/80"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-full bg-custom-btn-signup-bg text-custom-btn-signup-text flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden">
+                    {comment.userAvatar ? (
+                      <img src={comment.userAvatar} alt={comment.userName} className="w-full h-full object-cover" />
+                    ) : (
+                      comment.userName.charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm text-custom-text-primary">{comment.userName}</span>
+                      <span className="text-xs text-custom-text-muted">
+                        {new Date(comment.createdAt).toLocaleDateString('th-TH', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}
+                      </span>
+                    </div>
+                    <p className="text-sm text-custom-text-primary mt-1.5 leading-relaxed whitespace-pre-wrap">
+                      {comment.content}
+                    </p>
+                  </div>
+                </div>
+
+                {user && (user.id === comment.userId || user.role === 'admin') && (
+                  <button
+                    onClick={() => handleDeleteComment(comment.id)}
+                    className="p-1.5 rounded-lg text-custom-text-muted hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                    title="ลบความคิดเห็น"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                )}
+              </div>
+            ))
+          )}
         </div>
       </div>
 
@@ -310,7 +439,7 @@ export default function ViewPostPage() {
 
           <AlertDialogHeader className="flex flex-col items-center text-center mt-4">
             <AlertDialogTitle className="text-2xl font-bold tracking-tight text-custom-text-primary">
-              Create an account to continue
+              เข้าสู่ระบบเพื่อดำเนินการต่อ
             </AlertDialogTitle>
             <AlertDialogDescription className="text-sm text-custom-text-secondary mt-2 px-2">
               {alertMessage}
@@ -318,16 +447,25 @@ export default function ViewPostPage() {
           </AlertDialogHeader>
 
           <div className="flex flex-col gap-3.5 mt-6 items-center w-full">
-            <AlertDialogAction className="w-full text-sm font-semibold py-3 px-6 rounded-full cursor-pointer bg-custom-btn-signup-bg border border-custom-btn-signup-bg text-custom-btn-signup-text hover:opacity-90 transition-all text-center flex items-center justify-center">
-              Create account
-            </AlertDialogAction>
+            <button
+              onClick={() => {
+                setShowLoginAlert(false);
+                navigate('/signup');
+              }}
+              className="w-full text-sm font-semibold py-3 px-6 rounded-full cursor-pointer bg-custom-btn-signup-bg border border-custom-btn-signup-bg text-custom-btn-signup-text hover:opacity-90 transition-all text-center flex items-center justify-center"
+            >
+              สมัครสมาชิก
+            </button>
             <div className="text-sm text-custom-text-secondary mt-1">
-              Already have an account?{' '}
+              มีบัญชีอยู่แล้ว?{' '}
               <button 
-                onClick={() => setShowLoginAlert(false)} 
+                onClick={() => {
+                  setShowLoginAlert(false);
+                  navigate('/login');
+                }} 
                 className="font-semibold text-custom-text-primary hover:underline bg-transparent border-0 cursor-pointer p-0 inline"
               >
-                Log in
+                เข้าสู่ระบบ
               </button>
             </div>
           </div>
@@ -336,4 +474,3 @@ export default function ViewPostPage() {
     </article>
   );
 }
-
