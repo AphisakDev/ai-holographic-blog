@@ -4,6 +4,7 @@ import Comment from '../models/Comment.js';
 import Notification from '../models/Notification.js';
 import { verifyToken } from '../middlewares/authMiddleware.js';
 import { validateCreatePost } from '../middlewares/validatePost.js';
+import { seedDatabaseIfEmpty } from '../utils/seedMongo.js';
 
 const router = express.Router();
 
@@ -103,6 +104,12 @@ router.post('/', validateCreatePost, async (req, res) => {
 // ==========================================
 router.get('/', async (req, res) => {
   try {
+    // Auto-seed if database has 0 articles
+    const existingCount = await Article.countDocuments();
+    if (existingCount === 0) {
+      await seedDatabaseIfEmpty();
+    }
+
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 6;
     const category = req.query.category;
