@@ -16,18 +16,34 @@ const articleSchema = new mongoose.Schema(
       type: String,
       default: ''
     },
+    description: {
+      type: String,
+      default: ''
+    },
     category: {
       type: String,
       default: ''
     },
+    category_id: {
+      type: Number,
+      default: 1
+    },
     thumbnailUrl: {
+      type: String,
+      default: ''
+    },
+    image: {
       type: String,
       default: ''
     },
     status: {
       type: String,
       enum: ['draft', 'published'],
-      default: 'draft'
+      default: 'published'
+    },
+    status_id: {
+      type: Number,
+      default: 1
     },
     author: {
       type: String,
