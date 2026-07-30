@@ -64,7 +64,10 @@ export const seedDatabaseIfEmpty = async () => {
   try {
     const userCount = await User.countDocuments();
     const categoryCount = await Category.countDocuments();
-    const articleCount = await Article.countDocuments();
+
+    // Ensure any existing draft articles are updated to published
+    await Article.updateMany({ status: { $ne: 'published' } }, { $set: { status: 'published' } });
+    const articleCount = await Article.countDocuments({ status: 'published' });
 
     if (userCount > 0 && categoryCount > 0 && articleCount > 0) {
       console.log('MongoDB already contains all initial data. Skipping initial seeding.');
@@ -109,19 +112,26 @@ export const seedDatabaseIfEmpty = async () => {
     const articlesToSeed = (dbData.articles && dbData.articles.length > 0) ? dbData.articles : DEFAULT_ARTICLES;
     if (articleCount === 0 && articlesToSeed.length > 0) {
       for (const a of articlesToSeed) {
-        await Article.create({
-          customId: a.id,
-          title: a.title,
-          content: a.content || '',
-          category: a.category || '',
-          thumbnailUrl: a.thumbnailUrl || '',
-          status: a.status || 'published',
-          author: a.author || 'Admin',
-          likes: a.likes || 15,
-          createdAt: a.createdAt ? new Date(a.createdAt) : new Date()
-        });
+        const customId = a.id || a.customId || `art-${Math.random().toString(36).substring(2, 9)}`;
+        const exists = await Article.findOne({ customId });
+        if (exists) {
+          exists.status = 'published';
+          await exists.save();
+        } else {
+          await Article.create({
+            customId,
+            title: a.title,
+            content: a.content || '',
+            category: a.category || '',
+            thumbnailUrl: a.thumbnailUrl || '',
+            status: 'published',
+            author: a.author || 'Admin',
+            likes: a.likes || 15,
+            createdAt: a.createdAt ? new Date(a.createdAt) : new Date()
+          });
+        }
       }
-      console.log(`Seeded ${articlesToSeed.length} articles.`);
+      console.log(`Seeded/Updated ${articlesToSeed.length} articles.`);
     }
 
     console.log('Database seeding check completed successfully!');
