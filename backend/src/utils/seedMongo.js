@@ -77,9 +77,31 @@ export const seedDatabaseIfEmpty = async () => {
     console.log('Seeding missing initial data...');
     const dbData = await readDB();
 
+    // Ensure admin@domain.com account always exists with known password '12345678'
+    const adminEmail = 'admin@domain.com';
+    const adminPasswordHash = '$2a$10$lgifhey9UVWtkoeYmVj6aOejrpRGUt557NNpBbaxkV0hqyLr8x4LK'; // 12345678
+    const existingAdmin = await User.findOne({ email: adminEmail });
+    if (!existingAdmin) {
+      await User.create({
+        customId: 'admin-1',
+        name: 'Admin User',
+        email: adminEmail,
+        password: adminPasswordHash,
+        role: 'admin',
+        avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=Admin'
+      });
+      console.log('Admin account created with password 12345678.');
+    } else {
+      existingAdmin.password = adminPasswordHash;
+      existingAdmin.role = 'admin';
+      await existingAdmin.save();
+      console.log('Admin account password updated to 12345678.');
+    }
+
     const usersToSeed = (dbData.users && dbData.users.length > 0) ? dbData.users : [];
     if (userCount === 0 && usersToSeed.length > 0) {
       for (const u of usersToSeed) {
+        if (u.email.toLowerCase() === adminEmail) continue;
         await User.create({
           customId: u.id,
           name: u.name,
@@ -90,7 +112,7 @@ export const seedDatabaseIfEmpty = async () => {
           createdAt: u.createdAt ? new Date(u.createdAt) : new Date()
         });
       }
-      console.log(`Seeded ${usersToSeed.length} users.`);
+      console.log(`Seeded users.`);
     }
 
     const categoriesToSeed = (dbData.categories && dbData.categories.length > 0) ? dbData.categories : [
