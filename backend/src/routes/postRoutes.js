@@ -3,6 +3,7 @@ import Article from '../models/Article.js';
 import Comment from '../models/Comment.js';
 import Notification from '../models/Notification.js';
 import { verifyToken } from '../middlewares/authMiddleware.js';
+import { validateCreatePost } from '../middlewares/validatePost.js';
 
 const router = express.Router();
 
@@ -55,6 +56,45 @@ router.put('/notifications/read-all', verifyToken, async (req, res) => {
     res.json({ message: 'All notifications marked as read' });
   } catch (error) {
     res.status(500).json({ message: 'Server error updating notifications', error: error.message });
+  }
+});
+
+// ==========================================
+// 1.5 Create Post with Payload Validation
+// ==========================================
+router.post('/', validateCreatePost, async (req, res) => {
+  try {
+    const { title, image, category_id, description, content, status_id, author } = req.body;
+
+    const newArticle = await Article.create({
+      customId: `art-${Math.random().toString(36).substring(2, 9)}`,
+      title: title.trim(),
+      image: image.trim(),
+      thumbnailUrl: image.trim(),
+      category_id: category_id,
+      category: `Category ${category_id}`,
+      description: description.trim(),
+      content: content.trim(),
+      status_id: status_id,
+      status: status_id === 1 ? 'published' : 'draft',
+      author: author || 'Admin'
+    });
+
+    res.status(201).json({
+      message: 'Post created successfully',
+      post: {
+        id: newArticle.customId || newArticle._id.toString(),
+        title: newArticle.title,
+        image: newArticle.image,
+        category_id: newArticle.category_id,
+        description: newArticle.description,
+        content: newArticle.content,
+        status_id: newArticle.status_id,
+        createdAt: newArticle.createdAt
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error creating post', error: error.message });
   }
 });
 
