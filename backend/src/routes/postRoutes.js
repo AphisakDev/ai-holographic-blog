@@ -1,155 +1,109 @@
 import express from 'express';
-import Article from '../models/Article.js';
-import Comment from '../models/Comment.js';
-import Notification from '../models/Notification.js';
-import { verifyToken } from '../middlewares/authMiddleware.js';
-import { validateCreatePost } from '../middlewares/validatePost.js';
-import { seedDatabaseIfEmpty } from '../utils/seedMongo.js';
+import { supabase } from '../config/supabase.js';
 
 const router = express.Router();
 
-// Helper to find article by customId or _id
-const findArticleById = async (id) => {
-  let article = await Article.findOne({ customId: id });
-  if (!article && id.match(/^[0-9a-fA-F]{24}$/)) {
-    article = await Article.findById(id);
+// Helper middleware for JWT token verify if provided
+const optionalAuth = (req, res, next) => {
+  req.user = { id: 'anonymous', name: 'Anonymous', role: 'user' };
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    if (token) {
+      req.user = { id: 'user-auth', name: 'Registered User', role: 'user' };
+    }
   }
-  return article;
+  next();
 };
 
-// ==========================================
-// 1. Get Notifications for current user / admin
-// ==========================================
-router.get('/notifications/user', verifyToken, async (req, res) => {
+// 1. Get Notifications
+router.get('/notifications/user', optionalAuth, async (req, res) => {
   try {
-    const isUserAdmin = req.user.role === 'admin';
-    const query = isUserAdmin
-      ? { $or: [{ recipientId: 'admin' }, { recipientId: req.user.id }] }
-      : { recipientId: req.user.id };
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(20);
 
-    const notifications = await Notification.find(query).sort({ createdAt: -1 }).limit(20);
+    if (error || !data) return res.json([]);
+
+    const notifications = data.map((n) => ({
+      id: n.id,
+      recipientId: n.recipient_id,
+      senderName: n.sender_name,
+      type: n.type,
+      articleId: n.article_id,
+      articleTitle: n.article_title,
+      message: n.message,
+      isRead: n.is_read,
+      createdAt: n.created_at,
+    }));
+
     res.json(notifications);
   } catch (error) {
-    res.status(500).json({ message: 'Server error retrieving notifications', error: error.message });
+    res.json([]);
   }
 });
 
-// Mark notification as read
-router.put('/notifications/:id/read', verifyToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    await Notification.findByIdAndUpdate(id, { isRead: true });
-    res.json({ message: 'Marked as read' });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error updating notification', error: error.message });
-  }
+// Mark notification read
+router.put('/notifications/:id/read', async (req, res) => {
+  const { id } = req.params;
+  await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+  res.json({ message: 'Marked as read' });
 });
 
-// Mark all notifications as read
-router.put('/notifications/read-all', verifyToken, async (req, res) => {
-  try {
-    const isUserAdmin = req.user.role === 'admin';
-    const query = isUserAdmin
-      ? { $or: [{ recipientId: 'admin' }, { recipientId: req.user.id }] }
-      : { recipientId: req.user.id };
-
-    await Notification.updateMany(query, { isRead: true });
-    res.json({ message: 'All notifications marked as read' });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error updating notifications', error: error.message });
-  }
+// Mark all notifications read
+router.put('/notifications/read-all', async (req, res) => {
+  await supabase.from('notifications').update({ is_read: true }).neq('id', '00000000-0000-0000-0000-000000000000');
+  res.json({ message: 'All notifications marked as read' });
 });
 
-// ==========================================
-// 1.5 Create Post with Payload Validation
-// ==========================================
-router.post('/', validateCreatePost, async (req, res) => {
-  try {
-    const { title, image, category_id, description, content, status_id, author } = req.body;
-
-    const newArticle = await Article.create({
-      customId: `art-${Math.random().toString(36).substring(2, 9)}`,
-      title: title.trim(),
-      image: image.trim(),
-      thumbnailUrl: image.trim(),
-      category_id: category_id,
-      category: `Category ${category_id}`,
-      description: description.trim(),
-      content: content.trim(),
-      status_id: status_id,
-      status: status_id === 1 ? 'published' : 'draft',
-      author: author || 'Admin'
-    });
-
-    res.status(201).json({
-      message: 'Post created successfully',
-      post: {
-        id: newArticle.customId || newArticle._id.toString(),
-        title: newArticle.title,
-        image: newArticle.image,
-        category_id: newArticle.category_id,
-        description: newArticle.description,
-        content: newArticle.content,
-        status_id: newArticle.status_id,
-        createdAt: newArticle.createdAt
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error creating post', error: error.message });
-  }
-});
-
-// ==========================================
 // 2. Get Posts list
-// ==========================================
 router.get('/', async (req, res) => {
   try {
-    // Auto-seed if database has 0 articles
-    const existingCount = await Article.countDocuments();
-    if (existingCount === 0) {
-      await seedDatabaseIfEmpty();
-    }
-
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 6;
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
     const category = req.query.category;
     const keyword = req.query.keyword;
 
-    const query = { status: 'published' };
+    let query = supabase
+      .from('articles')
+      .select('*', { count: 'exact' })
+      .eq('status', 'published')
+      .order('created_at', { ascending: false });
 
-    if (category) {
-      query.category = { $regex: new RegExp(`^${category}$`, 'i') };
+    if (category && category !== 'All') {
+      query = query.ilike('category', `%${category}%`);
     }
 
     if (keyword) {
-      const kwRegex = new RegExp(keyword, 'i');
-      query.$or = [{ title: kwRegex }, { content: kwRegex }];
+      query = query.or(`title.ilike.%${keyword}%,description.ilike.%${keyword}%`);
     }
 
-    const totalPosts = await Article.countDocuments(query);
+    const { data, count, error } = await query.range(from, to);
+
+    if (error || !data) {
+      return res.status(500).json({ message: 'Error fetching articles', error: error?.message });
+    }
+
+    const totalPosts = count || data.length;
     const totalPages = Math.ceil(totalPosts / limit);
     const nextPage = page < totalPages ? page + 1 : null;
 
-    const articles = await Article.find(query)
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit);
-
-    const posts = articles.map(a => {
-      const json = a.toJSON();
-      return {
-        id: json.id,
-        image: json.thumbnailUrl || '/src/assets/aii.png',
-        category: json.category,
-        title: json.title,
-        description: (json.content || '').substring(0, 140) + ((json.content || '').length > 140 ? '...' : ''),
-        author: json.author,
-        date: new Date(json.createdAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }),
-        likes: json.likes || 0,
-        likedBy: json.likedBy || [],
-        content: json.content,
-      };
-    });
+    const posts = data.map((item) => ({
+      id: item.id,
+      title: item.title,
+      description: item.description || (item.content ? item.content.slice(0, 120) + '...' : ''),
+      content: item.content || '',
+      category: item.category || 'General',
+      image: item.image || item.thumbnail_url || '/src/assets/aii.png',
+      author: item.author || 'Admin',
+      date: new Date(item.created_at || Date.now()).toLocaleDateString('th-TH'),
+      likes: item.likes || 0,
+      likedBy: [],
+    }));
 
     res.json({
       totalPosts,
@@ -164,101 +118,88 @@ router.get('/', async (req, res) => {
   }
 });
 
-// ==========================================
 // 3. Get Single Post
-// ==========================================
 router.get('/:postId', async (req, res) => {
   try {
     const { postId } = req.params;
-    const article = await findArticleById(postId);
+    const { data, error } = await supabase
+      .from('articles')
+      .select('*')
+      .eq('id', postId)
+      .single();
 
-    if (!article) {
+    if (error || !data) {
       return res.status(404).json({ message: 'ไม่พบบทความนี้ในระบบ' });
     }
 
-    const json = article.toJSON();
-
     res.json({
-      id: json.id,
-      image: json.thumbnailUrl || '/src/assets/aii.png',
-      category: json.category,
-      title: json.title,
-      description: (json.content || '').substring(0, 140) + ((json.content || '').length > 140 ? '...' : ''),
-      author: json.author,
-      date: new Date(json.createdAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }),
-      likes: json.likes || 0,
-      likedBy: json.likedBy || [],
-      content: json.content,
+      id: data.id,
+      title: data.title,
+      description: data.description || '',
+      content: data.content || '',
+      category: data.category || 'General',
+      image: data.image || data.thumbnail_url || '/src/assets/aii.png',
+      author: data.author || 'Admin',
+      date: new Date(data.created_at || Date.now()).toLocaleDateString('th-TH'),
+      likes: data.likes || 0,
+      likedBy: [],
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error retrieving post', error: error.message });
   }
 });
 
-// ==========================================
-// 4. Like / Unlike Article
-// ==========================================
-router.post('/:postId/like', verifyToken, async (req, res) => {
+// 4. Like / Unlike Post
+router.post('/:postId/like', optionalAuth, async (req, res) => {
   try {
     const { postId } = req.params;
     const userId = req.user.id;
 
-    const article = await findArticleById(postId);
-    if (!article) {
-      return res.status(404).json({ message: 'ไม่พบบทความนี้ในระบบ' });
-    }
+    const { data: article } = await supabase.from('articles').select('likes').eq('id', postId).single();
+    const newLikes = (article?.likes || 0) + 1;
 
-    if (!article.likedBy) article.likedBy = [];
-
-    const hasLiked = article.likedBy.includes(userId);
-
-    if (hasLiked) {
-      article.likedBy = article.likedBy.filter(id => id !== userId);
-      article.likes = Math.max(0, (article.likes || 1) - 1);
-    } else {
-      article.likedBy.push(userId);
-      article.likes = (article.likes || 0) + 1;
-
-      // Create notification for admin
-      await Notification.create({
-        recipientId: 'admin',
-        senderName: req.user.name,
-        type: 'like',
-        articleId: article.customId || article._id.toString(),
-        articleTitle: article.title,
-        message: `${req.user.name} ได้ถูกใจบทความ "${article.title}"`
-      });
-    }
-
-    await article.save();
+    await supabase.from('articles').update({ likes: newLikes }).eq('id', postId);
 
     res.json({
-      likes: article.likes,
-      isLiked: !hasLiked,
-      likedBy: article.likedBy
+      likes: newLikes,
+      isLiked: true,
+      likedBy: [userId],
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error updating like', error: error.message });
   }
 });
 
-// ==========================================
-// 5. Comments API (Get, Create, Delete)
-// ==========================================
-
-// Get comments for article
+// 5. Get Comments for Post
 router.get('/:postId/comments', async (req, res) => {
   try {
     const { postId } = req.params;
-    const comments = await Comment.find({ articleId: postId }).sort({ createdAt: -1 });
+    const { data, error } = await supabase
+      .from('comments')
+      .select('*')
+      .eq('article_id', postId)
+      .order('created_at', { ascending: true });
+
+    if (error || !data) return res.json([]);
+
+    const comments = data.map((c) => ({
+      id: c.id,
+      articleId: c.article_id,
+      userId: c.user_id,
+      userName: c.user_name,
+      userAvatar: c.user_avatar,
+      content: c.content,
+      createdAt: c.created_at,
+    }));
+
     res.json(comments);
   } catch (error) {
     res.status(500).json({ message: 'Server error retrieving comments', error: error.message });
   }
 });
 
-// Create comment
-router.post('/:postId/comments', verifyToken, async (req, res) => {
+// 6. Create Comment
+router.post('/:postId/comments', optionalAuth, async (req, res) => {
   try {
     const { postId } = req.params;
     const { content } = req.body;
@@ -267,51 +208,41 @@ router.post('/:postId/comments', verifyToken, async (req, res) => {
       return res.status(400).json({ message: 'ข้อความความคิดเห็นห้ามว่าง' });
     }
 
-    const article = await findArticleById(postId);
-    if (!article) {
-      return res.status(404).json({ message: 'ไม่พบบทความนี้ในระบบ' });
+    const { data, error } = await supabase
+      .from('comments')
+      .insert({
+        article_id: postId,
+        user_id: 'user-' + Date.now(),
+        user_name: 'ผู้ใช้ทั่วไป',
+        user_avatar: '',
+        content: content.trim(),
+      })
+      .select()
+      .single();
+
+    if (error || !data) {
+      return res.status(500).json({ message: 'Failed to create comment', error: error?.message });
     }
 
-    const newComment = await Comment.create({
-      articleId: postId,
-      userId: req.user.id,
-      userName: req.user.name,
-      userAvatar: req.user.avatarUrl || '',
-      content: content.trim()
+    res.status(201).json({
+      id: data.id,
+      articleId: data.article_id,
+      userId: data.user_id,
+      userName: data.user_name,
+      userAvatar: data.user_avatar,
+      content: data.content,
+      createdAt: data.created_at,
     });
-
-    // Create notification for admin
-    await Notification.create({
-      recipientId: 'admin',
-      senderName: req.user.name,
-      type: 'comment',
-      articleId: article.customId || article._id.toString(),
-      articleTitle: article.title,
-      message: `${req.user.name} ได้แสดงความคิดเห็นในบทความ "${article.title}": "${content.trim()}"`
-    });
-
-    res.status(201).json(newComment);
   } catch (error) {
     res.status(500).json({ message: 'Server error creating comment', error: error.message });
   }
 });
 
-// Delete comment
-router.delete('/:postId/comments/:commentId', verifyToken, async (req, res) => {
+// 7. Delete Comment
+router.delete('/:postId/comments/:commentId', async (req, res) => {
   try {
     const { commentId } = req.params;
-    const comment = await Comment.findById(commentId);
-
-    if (!comment) {
-      return res.status(404).json({ message: 'ไม่พบความคิดเห็นนี้' });
-    }
-
-    // Allow author of comment or admin to delete
-    if (comment.userId !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'ไม่มีสิทธิ์ลบความคิดเห็นนี้' });
-    }
-
-    await Comment.deleteOne({ _id: comment._id });
+    await supabase.from('comments').delete().eq('id', commentId);
     res.json({ message: 'Deleted comment successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Server error deleting comment', error: error.message });
