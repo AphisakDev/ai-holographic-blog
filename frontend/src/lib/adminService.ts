@@ -16,7 +16,7 @@ export interface Category {
 }
 
 const STORAGE_KEY_CURRENT_USER = 'mock_current_user_session';
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://holographic-blog-backend.vercel.app/api';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 const API_BASE = `${BASE_URL}/admin`;
 
 const getAuthHeaders = (): HeadersInit => {
@@ -30,15 +30,13 @@ const getAuthHeaders = (): HeadersInit => {
       if (session.token) {
         headers['Authorization'] = `Bearer ${session.token}`;
       }
-    } catch (e) {
-      console.error('Error parsing session for auth headers:', e);
-    }
+    } catch (e) {}
   }
   return headers;
 };
 
 // ==========================================
-// CATEGORIES CRUD API
+// CATEGORIES CRUD VIA EXPRESS BACKEND
 // ==========================================
 
 export const getCategories = async (): Promise<Category[]> => {
@@ -92,7 +90,7 @@ export const deleteCategory = async (id: string): Promise<void> => {
 };
 
 // ==========================================
-// ARTICLES CRUD API
+// ARTICLES CRUD VIA EXPRESS BACKEND
 // ==========================================
 
 export const getArticles = async (): Promise<Article[]> => {
@@ -167,4 +165,3 @@ export const deleteArticle = async (id: string): Promise<void> => {
     throw new Error(errorData.message || 'Failed to delete article');
   }
 };
-

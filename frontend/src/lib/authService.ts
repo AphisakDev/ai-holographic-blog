@@ -13,7 +13,7 @@ export interface AuthSession {
 }
 
 const STORAGE_KEY_CURRENT_USER = 'mock_current_user_session';
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://holographic-blog-backend.vercel.app/api';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 const API_BASE = `${BASE_URL}/auth`;
 
 const getAuthHeaders = (): HeadersInit => {
@@ -35,7 +35,7 @@ const getAuthHeaders = (): HeadersInit => {
 };
 
 /**
- * สมัครสมาชิก (Sign Up)
+ * สมัครสมาชิกผ่าน Express Backend -> Supabase
  */
 export const signUpMock = async (name: string, email: string, password: string): Promise<User> => {
   const response = await fetch(`${API_BASE}/signup`, {
@@ -55,7 +55,7 @@ export const signUpMock = async (name: string, email: string, password: string):
 };
 
 /**
- * เข้าสู่ระบบ (Log In)
+ * เข้าสู่ระบบผ่าน Express Backend -> Supabase
  */
 export const loginMock = async (email: string, password: string): Promise<AuthSession> => {
   const response = await fetch(`${API_BASE}/login`, {
@@ -68,7 +68,7 @@ export const loginMock = async (email: string, password: string): Promise<AuthSe
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || 'Login failed');
+    throw new Error(errorData.message || 'Email หรือ Password ไม่ถูกต้อง');
   }
 
   const sessionData: AuthSession = await response.json();
@@ -77,7 +77,7 @@ export const loginMock = async (email: string, password: string): Promise<AuthSe
 };
 
 /**
- * เข้าสู่ระบบด้วยผู้ให้บริการภายนอก (Social Login Mock)
+ * Social Provider Login
  */
 export const loginWithProviderMock = async (provider: 'google' | 'facebook'): Promise<AuthSession> => {
   const response = await fetch(`${API_BASE}/login-provider`, {
@@ -99,14 +99,14 @@ export const loginWithProviderMock = async (provider: 'google' | 'facebook'): Pr
 };
 
 /**
- * ออกจากระบบ (Log Out)
+ * ออกจากระบบ
  */
 export const logoutMock = (): void => {
   localStorage.removeItem(STORAGE_KEY_CURRENT_USER);
 };
 
 /**
- * ตรวจสอบ Session ที่ยังคงค้างอยู่ใน localStorage
+ * ตรวจสอบ Session ที่คงค้างใน localStorage
  */
 export const getCurrentSessionMock = (): AuthSession | null => {
   const sessionJson = localStorage.getItem(STORAGE_KEY_CURRENT_USER);
@@ -119,7 +119,7 @@ export const getCurrentSessionMock = (): AuthSession | null => {
 };
 
 /**
- * แก้ไขข้อมูลส่วนตัว (Update Profile)
+ * แก้ไขข้อมูลส่วนตัว
  */
 export const updateProfileMock = async (_userId: string, name: string, avatarUrl: string): Promise<User> => {
   const response = await fetch(`${API_BASE}/profile`, {
@@ -134,24 +134,20 @@ export const updateProfileMock = async (_userId: string, name: string, avatarUrl
   }
 
   const updatedUser: User = await response.json();
-  
-  // Update local session storage
   const sessionJson = localStorage.getItem(STORAGE_KEY_CURRENT_USER);
   if (sessionJson) {
     try {
       const session = JSON.parse(sessionJson);
       session.user = updatedUser;
       localStorage.setItem(STORAGE_KEY_CURRENT_USER, JSON.stringify(session));
-    } catch (e) {
-      console.error('Error updating local session storage:', e);
-    }
+    } catch (e) {}
   }
 
   return updatedUser;
 };
 
 /**
- * เปลี่ยนรหัสผ่าน (Reset Password)
+ * เปลี่ยนรหัสผ่าน
  */
 export const updatePasswordMock = async (_userId: string, currentPassword: string, newPassword: string): Promise<void> => {
   const response = await fetch(`${API_BASE}/password`, {
@@ -165,4 +161,3 @@ export const updatePasswordMock = async (_userId: string, currentPassword: strin
     throw new Error(errorData.message || 'Update password failed');
   }
 };
-
