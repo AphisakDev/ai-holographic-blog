@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
-import postRoutes from './routes/postRoutes.js';
+import postRoutes from './apps/postRoutes.mjs';
 import adminRoutes from './routes/adminRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import authRouter from './routes/auth.mjs';

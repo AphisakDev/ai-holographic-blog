@@ -1,16 +1,14 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
-
-import postRoutes from './routes/postRoutes.js';
+import postRoutes from './apps/postRoutes.mjs';
 import adminRoutes from './routes/adminRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 
-dotenv.config();
-
 const app = express();
+const PORT = process.env.PORT || 4000;
 
-// Standard Middlewares
+// Middleware
 app.use(cors({
   origin: process.env.FRONTEND_URL || true,
   credentials: true
@@ -18,7 +16,11 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Express Router Mounting
+// Routes
+app.get('/', (req, res) => {
+  res.json({ message: 'API is running' });
+});
+
 app.use('/posts', postRoutes);
 app.use('/api/posts', postRoutes);
 
@@ -31,10 +33,6 @@ app.use('/api/auth', authRoutes);
 // Health Check
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'Server is healthy' });
-});
-
-app.get('/', (req, res) => {
-  res.json({ status: 'success', message: 'Holographic Blog Express Router App is Running!' });
 });
 
 // Global Error Handler
