@@ -11,6 +11,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import AdminLayout from './pages/AdminLayout';
 import ArticleListPage from './pages/ArticleListPage';
 import ArticleFormPage from './pages/ArticleFormPage';
+import CreatePostComponent from './component/CreatePostComponent';
 import CategoryListPage from './pages/CategoryListPage';
 import NotificationListPage from './pages/NotificationListPage';
 import { Toaster } from './components/ui/sonner';
@@ -47,6 +48,8 @@ function App() {
               <Route path="/admin" element={<Navigate to="/admin/articles" replace />} />
               <Route path="/admin/articles" element={<ArticleListPage />} />
               <Route path="/admin/articles/create" element={<ArticleFormPage />} />
+              <Route path="/admin/create-post" element={<CreatePostComponent />} />
+              <Route path="/create-post" element={<CreatePostComponent />} />
               <Route path="/admin/articles/edit/:id" element={<ArticleFormPage />} />
               <Route path="/admin/categories" element={<CategoryListPage />} />
               <Route path="/admin/profile" element={<ProfilePage />} />
