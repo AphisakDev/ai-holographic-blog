@@ -1,48 +1,68 @@
-import pg from 'pg';
-import dotenv from 'dotenv';
-import { supabase } from '../config/supabase.js';
+import pg from "pg";
+import dotenv from "dotenv";
+import { supabase } from "../config/supabase.js";
 
 dotenv.config();
 
 const { Pool } = pg;
 
-// Supabase PostgreSQL direct connection string or Pool
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/postgres';
+const connectionString =
+  process.env.CONNECTION_STRING ||
+  process.env.DATABASE_URL ||
+  "postgresql://postgres:postgres@localhost:5432/postgres";
 
 export const pool = new Pool({
   connectionString,
-  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
+  ssl:
+    process.env.CONNECTION_STRING || process.env.DATABASE_URL
+      ? { rejectUnauthorized: false }
+      : false,
 });
 
-// Wrapper object matching `connectionPool.query(...)` interface
-export const connectionPool = {
-  async query(text, params) {
-    try {
-      if (process.env.DATABASE_URL) {
-        return await pool.query(text, params);
-      }
-    } catch (e) {
-      console.warn('Direct PG Pool query error, using Supabase client fallback:', e.message);
-    }
+const originalQuery = pool.query.bind(pool);
+pool.query = async function (text, params) {
+  try {
+    return await originalQuery(text, params);
+  } catch (err) {
+    console.warn("Direct PG Pool query error, using Supabase fallback:", err.message);
+    const sqlText = (text || "").trim().toLowerCase();
 
-    // Smart Fallback using Supabase JS client to mimic pg query response
-    const sqlText = text.trim();
-    if (sqlText.toLowerCase().startsWith('select')) {
-      if (sqlText.includes('username =')) {
-        const username = params[0];
-        const { data } = await supabase.from('users').select('*').eq('username', username);
+    if (sqlText.startsWith("select")) {
+      if (sqlText.includes("from users")) {
+        const usernameOrId = params ? params[0] : null;
+        let supabaseQuery = supabase.from("users").select("*");
+        if (usernameOrId) {
+          supabaseQuery = supabaseQuery.or(`id.eq.${usernameOrId},username.eq.${usernameOrId}`);
+        }
+        const { data } = await supabaseQuery;
         return { rows: data || [] };
       }
-    } else if (sqlText.toLowerCase().startsWith('insert into users')) {
-      const [id, username, name, role] = params;
+    } else if (sqlText.startsWith("insert into posts") || sqlText.startsWith("insert into articles")) {
+      const title = params ? params[0] : "";
+      const image = params ? params[1] : "";
+      const category_id = params ? params[2] : 1;
+      const description = params ? params[3] : "";
+      const content = params ? params[4] : "";
+      const status_id = params ? params[5] : 1;
+
       const { data } = await supabase
-        .from('users')
-        .insert({ id, username, name, role: role || 'user' })
+        .from("articles")
+        .insert({
+          title,
+          image,
+          category_id: parseInt(category_id) || 1,
+          description,
+          content,
+          status: parseInt(status_id) === 2 ? "draft" : "published",
+        })
         .select();
 
-      return { rows: data || [{ id, username, name, role: role || 'user' }] };
+      return { rows: data || [] };
     }
 
     return { rows: [] };
-  },
+  }
 };
+
+export const connectionPool = pool;
+export default connectionPool;
